@@ -22,7 +22,7 @@ import numpy as np
 from homeassistant.helpers.network import get_url
 from homeassistant.exceptions import ServiceValidationError
 
-from .const import DOMAIN
+from .const import DOMAIN, CONF_PROVIDER, CONF_FULL_RES_KEY_FRAME
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -73,6 +73,22 @@ class MediaProcessor:
         if img.mode == "RGBA" or img.format == "GIF":
             img = img.convert("RGB")
         return img
+
+    def _full_res_key_frame_enabled(self) -> bool:
+        """Whether the Settings entry opts in to keeping the full-size key frame.
+
+        Off by default: it roughly doubles snapshot storage, and most setups only
+        ever display the resized copy.
+        """
+        for entry in self.hass.config_entries.async_entries(DOMAIN):
+            if entry.data.get(CONF_PROVIDER) == "Settings":
+                return bool(
+                    entry.options.get(
+                        CONF_FULL_RES_KEY_FRAME,
+                        entry.data.get(CONF_FULL_RES_KEY_FRAME, False),
+                    )
+                )
+        return False
 
     # `full_image_data`, when given, is the key frame at its CAPTURED resolution.
     # It is saved beside the resized copy as <uid>-<name>-full.jpg so a dashboard
@@ -520,7 +536,11 @@ class MediaProcessor:
                     uid=str(uuid.uuid4())[:8],
                     # The same frame before resize_image() downscaled it to
                     # target_width - no second capture, so it is the same instant.
-                    full_image_data=selected_frames[key_idx][1],
+                    full_image_data=(
+                        selected_frames[key_idx][1]
+                        if self._full_res_key_frame_enabled()
+                        else None
+                    ),
                 )
 
     async def add_images(
