@@ -34,6 +34,7 @@ CONF_CUSTOM_OPENAI_ENDPOINT = "custom_openai_endpoint"
 
 # Timeline
 CONF_RETENTION_TIME = "retention_time"
+CONF_FULL_RES_KEY_FRAME = "full_res_key_frame"
 
 # Settings
 CONF_TIMELINE_LANGUAGE = "timeline_language"
