@@ -36,6 +36,11 @@ class MediaProcessor:
         self.filenames = []
         self.snapshots_path = f"/media/{DOMAIN}/snapshots/"
         self.key_frame = ""
+        # Stream frames are kept until the model response arrives, so the frame
+        # that supports the model's answer can be saved. Each item is
+        # (name, captured bytes, resized bytes).
+        self._stream_frames = []
+        self._stream_fallback_index = 0
 
     async def _encode_image(self, img):
         """Encode image as base64"""
@@ -533,20 +538,13 @@ class MediaProcessor:
                 self.client.add_frame(base64_image=resized_image, filename=frame_name)
 
             if expose_images:
-                key_name = selected_frames[key_idx][0]
-                key_b64 = resized_base64[key_idx]
-                await self._expose_image(
-                    frame_name=key_name.split("-")[0],
-                    image_data=key_b64,
-                    uid=str(uuid.uuid4())[:8],
-                    # The same frame before resize_image() downscaled it to
-                    # target_width - no second capture, so it is the same instant.
-                    full_image_data=(
-                        selected_frames[key_idx][1]
-                        if self._full_res_key_frame_enabled()
-                        else None
-                    ),
-                )
+                self._stream_frames = [
+                    (name, raw, resized)
+                    for (name, raw, _), resized in zip(
+                        selected_frames, resized_base64, strict=True
+                    )
+                ]
+                self._stream_fallback_index = key_idx
 
     async def add_images(
         self, image_entities, image_paths, target_width, include_filename, expose_images
@@ -993,6 +991,26 @@ class MediaProcessor:
         await asyncio.gather(*map(process_video, video_paths))
 
         return self.client
+
+    async def expose_stream_frame(self, index=None):
+        """Save the model-selected stream frame after the model responds."""
+        if not self._stream_frames:
+            return
+        if index is None:
+            index = self._stream_fallback_index
+        elif type(index) is not int or not 0 <= index < len(self._stream_frames):
+            raise ServiceValidationError(f"Invalid key_frame_index: {index!r}")
+
+        name, raw, resized = self._stream_frames[index]
+        self._stream_frames = []
+        await self._expose_image(
+            frame_name=name.split("-")[0],
+            image_data=resized,
+            uid=str(uuid.uuid4())[:8],
+            # The same frame before resize_image() downscaled it to
+            # target_width - no second capture, so it is the same instant.
+            full_image_data=(raw if self._full_res_key_frame_enabled() else None),
+        )
 
     async def add_streams(
         self,
