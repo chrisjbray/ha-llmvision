@@ -763,6 +763,50 @@ class TestMediaProcessor:
         )
 
     @pytest.mark.asyncio
+    async def test_expose_stream_frame_saves_selected_index(self, processor):
+        """The model-selected index decides which retained frame is saved."""
+        processor._expose_image = AsyncMock()
+        processor._stream_frames = [
+            ("camera-frame-0", b"raw0", "small0"),
+            ("camera-frame-1", b"raw1", "small1"),
+        ]
+        processor._stream_fallback_index = 0
+
+        await processor.expose_stream_frame(1)
+
+        _, kwargs = processor._expose_image.await_args_list[0]
+        assert kwargs["image_data"] == "small1"
+        assert kwargs["full_image_data"] == b"raw1"
+        assert processor._stream_frames == []
+
+    @pytest.mark.asyncio
+    async def test_expose_stream_frame_falls_back_without_index(self, processor):
+        """Schemas without the field keep the SSIM fallback frame."""
+        processor._expose_image = AsyncMock()
+        processor._stream_frames = [("camera-frame-0", b"raw0", "small0")]
+        processor._stream_fallback_index = 0
+
+        await processor.expose_stream_frame(None)
+
+        _, kwargs = processor._expose_image.await_args_list[0]
+        assert kwargs["image_data"] == "small0"
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("bad_index", [True, -1, 2, "1"])
+    async def test_expose_stream_frame_rejects_invalid_index(
+        self, processor, bad_index
+    ):
+        """An invalid index fails instead of drawing on the wrong frame."""
+        processor._expose_image = AsyncMock()
+        processor._stream_frames = [("camera-frame-0", b"raw0", "small0")]
+        processor._stream_fallback_index = 0
+
+        with pytest.raises(ServiceValidationError):
+            await processor.expose_stream_frame(bad_index)
+
+        processor._expose_image.assert_not_awaited()
+
+    @pytest.mark.asyncio
     async def test_add_streams_delegates_to_record(self, processor):
         """add_streams should proxy to record when image entities are present."""
         processor.record = AsyncMock()
