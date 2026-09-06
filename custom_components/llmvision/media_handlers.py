@@ -481,8 +481,13 @@ class MediaProcessor:
 
         # Add selected frames to client
         if selected_frames:
-            # Choose keyframe among the selected frames using the last as reference
-            reference_bytes = selected_frames[-1][1]
+            # Choose the keyframe using the FIRST selected frame as the reference.
+            # `selected_frames` is [baseline frame] + [highest-motion frames], so
+            # using the LAST frame as the reference makes "most different" resolve
+            # to the baseline - the frame from before anything happened - and the
+            # subject never appears in the saved key frame. `add_video` below
+            # already uses selected_frames[0] as its reference.
+            reference_bytes = selected_frames[0][1]
             candidate_bytes = [data for _, data, _ in selected_frames]
             key_idx = await self._select_keyframe_index(
                 reference_bytes, candidate_bytes
