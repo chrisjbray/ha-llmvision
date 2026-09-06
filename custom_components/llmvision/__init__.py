@@ -781,6 +781,16 @@ def setup(hass, config):
         await call.memory._update_memory()
 
         response = await request.call(call)
+        # The schema may ask the model which attached image supports its answer.
+        # Save that image now, so the stored frame and the reported box agree.
+        # Measured 2026-09-05: the model correctly described a departing SUV from
+        # one attached image while the heuristic saved an empty driveway from 4m35s
+        # earlier. Schemas without the field keep the SSIM fallback.
+        structured = response.get("structured_response")
+        key_frame_index = (
+            structured.get("key_frame_index") if isinstance(structured, dict) else None
+        )
+        await processor.expose_stream_frame(key_frame_index)
         # Add processor.key_frame to response if it exists
         if processor.key_frame:
             response["key_frame"] = processor.key_frame
