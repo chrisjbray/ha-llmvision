@@ -32,6 +32,7 @@ from .const import (
     CONF_AZURE_DEPLOYMENT,
     CONF_CUSTOM_OPENAI_ENDPOINT,
     CONF_RETENTION_TIME,
+    CONF_FULL_RES_KEY_FRAME,
     CONF_TIMELINE_LANGUAGE,
     CONF_FALLBACK_PROVIDER,
     CONF_MEMORY_PATHS,
@@ -1446,6 +1447,9 @@ class llmvisionConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                                     }
                                 }
                             ),
+                            vol.Required(
+                                CONF_FULL_RES_KEY_FRAME, default=False
+                            ): selector({"boolean": {}}),
                         }
                     ),
                     {"collapsed": True},
@@ -1495,6 +1499,9 @@ class llmvisionConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     CONF_TIMELINE_LANGUAGE, "English"
                 ),
                 CONF_RETENTION_TIME: self.init_info.get(CONF_RETENTION_TIME, 7),
+                CONF_FULL_RES_KEY_FRAME: self.init_info.get(
+                    CONF_FULL_RES_KEY_FRAME, False
+                ),
                 # CONF_TIMELINE_TODAY_SUMMARY: self.init_info.get(CONF_TIMELINE_TODAY_SUMMARY, False),
                 # CONF_TIMELINE_SUMMARY_PROMPT: self.init_info.get(
                 #     CONF_TIMELINE_SUMMARY_PROMPT, DEFAULT_SUMMARY_PROMPT),

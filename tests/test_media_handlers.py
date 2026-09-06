@@ -153,6 +153,42 @@ class TestMediaProcessor:
         assert processor.key_frame.endswith("deadbeef-7.jpg")
         processor._save_clip.assert_awaited_once()
 
+    @pytest.mark.parametrize(
+        ("entries", "expected"),
+        [
+            ([], False),
+            ([SimpleNamespace(data={"provider": "OpenAI"}, options={})], False),
+            ([SimpleNamespace(data={"provider": "Settings"}, options={})], False),
+            (
+                [
+                    SimpleNamespace(
+                        data={"provider": "Settings", "full_res_key_frame": True},
+                        options={},
+                    )
+                ],
+                True,
+            ),
+            (
+                [
+                    SimpleNamespace(
+                        data={"provider": "Settings", "full_res_key_frame": True},
+                        options={"full_res_key_frame": False},
+                    )
+                ],
+                False,
+            ),
+        ],
+    )
+    def test_full_res_key_frame_enabled(self, processor, entries, expected):
+        """The full-size key frame is off unless the Settings entry opts in.
+
+        Options win over data, so a reconfigure takes effect, and a non-Settings
+        entry is never consulted.
+        """
+        processor.hass.config_entries.async_entries = Mock(return_value=entries)
+
+        assert processor._full_res_key_frame_enabled() is expected
+
     @pytest.mark.asyncio
     async def test_select_keyframe_index_picks_lowest_similarity(self, processor):
         """_select_keyframe_index should return the most dissimilar candidate."""

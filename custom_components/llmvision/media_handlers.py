@@ -22,7 +22,7 @@ import numpy as np
 from homeassistant.helpers.network import get_url
 from homeassistant.exceptions import ServiceValidationError
 
-from .const import DOMAIN
+from .const import DOMAIN, CONF_PROVIDER, CONF_FULL_RES_KEY_FRAME
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -74,7 +74,29 @@ class MediaProcessor:
             img = img.convert("RGB")
         return img
 
-    async def _expose_image(self, frame_name, image_data, uid, frame_path=None):
+    def _full_res_key_frame_enabled(self) -> bool:
+        """Whether the Settings entry opts in to keeping the full-size key frame.
+
+        Off by default: it roughly doubles snapshot storage, and most setups only
+        ever display the resized copy.
+        """
+        for entry in self.hass.config_entries.async_entries(DOMAIN):
+            if entry.data.get(CONF_PROVIDER) == "Settings":
+                return bool(
+                    entry.options.get(
+                        CONF_FULL_RES_KEY_FRAME,
+                        entry.data.get(CONF_FULL_RES_KEY_FRAME, False),
+                    )
+                )
+        return False
+
+    # `full_image_data`, when given, is the key frame at its CAPTURED resolution.
+    # It is saved beside the resized copy as <uid>-<name>-full.jpg so a dashboard
+    # can show the frame at full detail while the model still only ever receives
+    # the `target_width` downscale.
+    async def _expose_image(
+        self, frame_name, image_data, uid, frame_path=None, full_image_data=None
+    ):
         # ensure /media/llmvision/snapshots dir exists
         await self.hass.loop.run_in_executor(
             None,
@@ -91,6 +113,14 @@ class MediaProcessor:
                     await self.hass.loop.run_in_executor(None, image.load)
                     image_data = await self._encode_image(image)
             await self._save_clip(image_data=image_data, image_path=filename)
+            # Keep the un-resized frame too. Inside the `key_frame == ""` guard on
+            # purpose, so a second camera in the same call cannot overwrite the
+            # first camera's full-size frame.
+            if full_image_data is not None:
+                await self._save_clip(
+                    image_data=full_image_data,
+                    image_path=filename[: -len(".jpg")] + "-full.jpg",
+                )
 
     def _similarity_score(self, previous_frame, current_frame_gray):
         """

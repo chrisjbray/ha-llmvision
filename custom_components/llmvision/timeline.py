@@ -983,6 +983,21 @@ class Timeline:
                 (os.path.basename(n) or "").lower()
                 for n in await self.get_linked_images()
             }
+            # A key frame and its full-resolution copy, <name>.jpg and
+            # <name>-full.jpg, are one pair but an event references only ONE of
+            # them. Whichever that is, this sweep would delete the sibling as an
+            # orphan on its next run - which is every Home Assistant startup.
+            # Protect the pair in BOTH directions so the two always age out
+            # together with the event they belong to.
+            linked_frames |= {
+                (
+                    n[: -len("-full.jpg")] + ".jpg"
+                    if n.endswith("-full.jpg")
+                    else n[: -len(".jpg")] + "-full.jpg"
+                )
+                for n in linked_frames
+                if n.endswith(".jpg")
+            }
 
             # List files in snapshots dir (in executor, non-blocking)
             try:
