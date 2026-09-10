@@ -646,13 +646,15 @@ class Timeline:
         for event in self.events:
             if event.uid == uid:
                 # return event as dict
+                small, full = self._key_frame_variants(event.key_frame)
                 event_dict = {
                     "uid": event.uid,
                     "title": event.title,
                     "start": event.start.isoformat() if event.start else None,
                     "end": event.end.isoformat() if event.end else None,
                     "description": event.description,
-                    "key_frame": self._resolve_key_frame(event.key_frame),
+                    "key_frame": small,
+                    "key_frame_full": full,
                     "camera_name": event.camera_name,
                     "category": event.category,
                     "label": event.label,
@@ -660,19 +662,38 @@ class Timeline:
                 return event_dict
         return None
 
-    def _resolve_key_frame(self, key_frame: str | None) -> str:
-        """Point a -full.jpg link at the small copy when -full is missing."""
-        if not key_frame or not key_frame.endswith("-full.jpg"):
-            return key_frame or ""
-        full_path = key_frame.replace(
+    def _key_frame_variants(self, key_frame: str | None) -> tuple[str, str]:
+        """Return (small, full) links for one stored key frame.
+
+        The list shows small, the detail shows full when it is on disk.
+        Same frame, same box, only the pixel count differs.
+        """
+        key_frame = key_frame or ""
+        if not key_frame.endswith(".jpg"):
+            return key_frame, key_frame
+        small = (
+            key_frame[: -len("-full.jpg")] + ".jpg"
+            if key_frame.endswith("-full.jpg")
+            else key_frame
+        )
+        full = (
+            key_frame
+            if key_frame.endswith("-full.jpg")
+            else key_frame[: -len(".jpg")] + "-full.jpg"
+        )
+        full_path = full.replace(
             "media-source://media_source/llmvision/snapshots/", "/media/llmvision/snapshots/"
         ).replace("/media/llmvision/snapshots/", self._media_path + "/", 1)
         try:
             if os.path.isfile(full_path):
-                return key_frame
+                return small, full
         except OSError:
             pass
-        return key_frame[: -len("-full.jpg")] + ".jpg"
+        return small, small
+
+    def _resolve_key_frame(self, key_frame: str | None) -> str:
+        """Point a -full.jpg link at the small copy when -full is missing."""
+        return self._key_frame_variants(key_frame)[0]
 
     async def get_events_json(
         self,
@@ -761,6 +782,7 @@ class Timeline:
                     if end_dt and row_start and row_start >= end_dt:
                         continue
 
+                    small, full = self._key_frame_variants(row[6])
                     events.append(
                         {
                             "uid": row[0],
@@ -768,10 +790,9 @@ class Timeline:
                             "start": row[2],
                             "end": row[3],
                             "description": row[4],
-                            # A -full.jpg link only resolves while the file is on
-                            # disk. Fall back to the small copy when it is gone,
-                            # e.g. full_res_key_frame off. Same frame, same box.
-                            "key_frame": self._resolve_key_frame(row[6]),
+                            # List shows small; detail shows full when on disk.
+                            "key_frame": small,
+                            "key_frame_full": full,
                             "camera_name": row[7],
                             "category": row[5],
                             "label": row[8],

@@ -783,10 +783,12 @@ class TestGetEventsJson:
         )
         events = await tl.get_events_json(limit=None)
         assert events[0]["key_frame"].endswith(f"{uid}-cam.jpg")
+        assert events[0]["key_frame_full"].endswith(f"{uid}-cam.jpg")
 
     async def test_existing_full_res_keeps_full_link(
         self, build_timeline, tmp_path
     ):
+        """List links small; detail links full when -full is on disk."""
         tl = build_timeline(retention=0)
         await tl._initialize_db()
         uid = "def456"
@@ -807,7 +809,8 @@ class TestGetEventsJson:
             ],
         )
         events = await tl.get_events_json(limit=None)
-        assert events[0]["key_frame"].endswith(f"{uid}-cam-full.jpg")
+        assert events[0]["key_frame"].endswith(f"{uid}-cam.jpg")
+        assert events[0]["key_frame_full"].endswith(f"{uid}-cam-full.jpg")
 
     async def test_event_with_no_camera_passes_camera_filter(self, build_timeline):
         """Events that have no camera set are not excluded by a camera filter."""
