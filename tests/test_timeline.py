@@ -758,6 +758,57 @@ class TestGetEventsJson:
         events_upper = await tl.get_events_json(limit=None, cameras=["FRONT"])
         assert len(events_lower) == len(events_upper)
 
+    async def test_missing_full_res_falls_back_to_small_copy(
+        self, build_timeline, tmp_path
+    ):
+        """Events written when full_res was on still render when it is off."""
+        tl = build_timeline(retention=0)
+        await tl._initialize_db()
+        uid = "abc123"
+        small = tmp_path / f"{uid}-cam.jpg"
+        small.write_bytes(b"small")
+        tl._media_path = str(tmp_path)
+        await _insert_rows(
+            tl._db_path,
+            [
+                _make_row(
+                    "car in driveway",
+                    0.1,
+                    camera="driveway",
+                    category="vehicle",
+                    label="car",
+                    key_frame=f"media-source://media_source/llmvision/snapshots/{uid}-cam-full.jpg",
+                )
+            ],
+        )
+        events = await tl.get_events_json(limit=None)
+        assert events[0]["key_frame"].endswith(f"{uid}-cam.jpg")
+
+    async def test_existing_full_res_keeps_full_link(
+        self, build_timeline, tmp_path
+    ):
+        tl = build_timeline(retention=0)
+        await tl._initialize_db()
+        uid = "def456"
+        (tmp_path / f"{uid}-cam.jpg").write_bytes(b"small")
+        (tmp_path / f"{uid}-cam-full.jpg").write_bytes(b"full")
+        tl._media_path = str(tmp_path)
+        await _insert_rows(
+            tl._db_path,
+            [
+                _make_row(
+                    "car in driveway",
+                    0.1,
+                    camera="driveway",
+                    category="vehicle",
+                    label="car",
+                    key_frame=f"media-source://media_source/llmvision/snapshots/{uid}-cam-full.jpg",
+                )
+            ],
+        )
+        events = await tl.get_events_json(limit=None)
+        assert events[0]["key_frame"].endswith(f"{uid}-cam-full.jpg")
+
     async def test_event_with_no_camera_passes_camera_filter(self, build_timeline):
         """Events that have no camera set are not excluded by a camera filter."""
         tl = build_timeline(retention=0)

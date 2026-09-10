@@ -652,13 +652,27 @@ class Timeline:
                     "start": event.start.isoformat() if event.start else None,
                     "end": event.end.isoformat() if event.end else None,
                     "description": event.description,
-                    "key_frame": event.key_frame,
+                    "key_frame": self._resolve_key_frame(event.key_frame),
                     "camera_name": event.camera_name,
                     "category": event.category,
                     "label": event.label,
                 }
                 return event_dict
         return None
+
+    def _resolve_key_frame(self, key_frame: str | None) -> str:
+        """Point a -full.jpg link at the small copy when -full is missing."""
+        if not key_frame or not key_frame.endswith("-full.jpg"):
+            return key_frame or ""
+        full_path = key_frame.replace(
+            "media-source://media_source/llmvision/snapshots/", "/media/llmvision/snapshots/"
+        ).replace("/media/llmvision/snapshots/", self._media_path + "/", 1)
+        try:
+            if os.path.isfile(full_path):
+                return key_frame
+        except OSError:
+            pass
+        return key_frame[: -len("-full.jpg")] + ".jpg"
 
     async def get_events_json(
         self,
@@ -754,7 +768,10 @@ class Timeline:
                             "start": row[2],
                             "end": row[3],
                             "description": row[4],
-                            "key_frame": row[6],
+                            # A -full.jpg link only resolves while the file is on
+                            # disk. Fall back to the small copy when it is gone,
+                            # e.g. full_res_key_frame off. Same frame, same box.
+                            "key_frame": self._resolve_key_frame(row[6]),
                             "camera_name": row[7],
                             "category": row[5],
                             "label": row[8],

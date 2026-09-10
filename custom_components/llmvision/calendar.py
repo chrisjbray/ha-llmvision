@@ -128,7 +128,9 @@ class Calendar(CalendarEntity):
                 continue
             event_start = self._ensure_datetime(event.start)
             event_end = self._ensure_datetime(event.end)
-            key_frame = getattr(event, "key_frame", "") or ""
+            key_frame = self.timeline._resolve_key_frame(
+                getattr(event, "key_frame", "") or ""
+            )
             camera_name = getattr(event, "camera_name", "") or ""
             calendar_events.append(
                 CalendarEvent(
