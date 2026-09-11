@@ -1,4 +1,5 @@
 """Unit tests for media_handlers.py module."""
+
 import pytest
 from unittest.mock import Mock, patch, AsyncMock, MagicMock
 from PIL import Image
@@ -87,7 +88,9 @@ class TestMediaProcessor:
     @pytest.fixture
     def processor(self, mock_hass, mock_client):
         """Create a MediaProcessor instance."""
-        with patch('custom_components.llmvision.media_handlers.async_get_clientsession'):
+        with patch(
+            "custom_components.llmvision.media_handlers.async_get_clientsession"
+        ):
             return MediaProcessor(mock_hass, mock_client)
 
     def test_init(self, processor, mock_hass, mock_client):
@@ -102,7 +105,7 @@ class TestMediaProcessor:
     async def test_encode_image(self, processor):
         """Test _encode_image method."""
         # Create a simple test image
-        img = Image.new('RGB', (100, 100), color='red')
+        img = Image.new("RGB", (100, 100), color="red")
 
         result = await processor._encode_image(img)
 
@@ -210,30 +213,27 @@ class TestMediaProcessor:
 
     def test_convert_to_rgb_rgba(self, processor):
         """Test _convert_to_rgb with RGBA image."""
-        img = Image.new('RGBA', (100, 100), color=(255, 0, 0, 128))
+        img = Image.new("RGBA", (100, 100), color=(255, 0, 0, 128))
 
         result = processor._convert_to_rgb(img)
 
-        assert result.mode == 'RGB'
+        assert result.mode == "RGB"
 
     def test_convert_to_rgb_already_rgb(self, processor):
         """Test _convert_to_rgb with RGB image."""
-        img = Image.new('RGB', (100, 100), color='red')
+        img = Image.new("RGB", (100, 100), color="red")
 
         result = processor._convert_to_rgb(img)
 
-        assert result.mode == 'RGB'
+        assert result.mode == "RGB"
 
     @pytest.mark.asyncio
     async def test_resize_image_with_img(self, processor):
         """Test resize_image with PIL Image object."""
         # Create a test image
-        img = Image.new('RGB', (200, 100), color='blue')
+        img = Image.new("RGB", (200, 100), color="blue")
 
-        result = await processor.resize_image(
-            target_width=100,
-            img=img
-        )
+        result = await processor.resize_image(target_width=100, img=img)
 
         assert isinstance(result, str)
         assert len(result) > 0
@@ -263,8 +263,8 @@ class TestMediaProcessor:
     def test_similarity_score(self, processor):
         """Test _similarity_score method."""
         # Create two similar images
-        img1 = Image.new('L', (100, 100), color=128)
-        img2 = Image.new('L', (100, 100), color=130)
+        img1 = Image.new("L", (100, 100), color=128)
+        img2 = Image.new("L", (100, 100), color=130)
 
         score = processor._similarity_score(img1, img2)
 
@@ -763,9 +763,11 @@ class TestMediaProcessor:
         )
 
     @pytest.mark.asyncio
-    async def test_expose_stream_frame_saves_selected_index(self, processor):
-        """The model-selected index decides which retained frame is saved."""
+    @pytest.mark.parametrize("full_res", [False, True])
+    async def test_expose_stream_frame_saves_selected_index(self, processor, full_res):
+        """The model-selected index and full-resolution opt-in are independent."""
         processor._expose_image = AsyncMock()
+        processor._full_res_key_frame_enabled = Mock(return_value=full_res)
         processor._stream_frames = [
             ("camera-frame-0", b"raw0", "small0"),
             ("camera-frame-1", b"raw1", "small1"),
@@ -776,13 +778,14 @@ class TestMediaProcessor:
 
         _, kwargs = processor._expose_image.await_args_list[0]
         assert kwargs["image_data"] == "small1"
-        assert kwargs["full_image_data"] == b"raw1"
+        assert kwargs["full_image_data"] == (b"raw1" if full_res else None)
         assert processor._stream_frames == []
 
     @pytest.mark.asyncio
     async def test_expose_stream_frame_falls_back_without_index(self, processor):
         """Schemas without the field keep the SSIM fallback frame."""
         processor._expose_image = AsyncMock()
+        processor._full_res_key_frame_enabled = Mock(return_value=False)
         processor._stream_frames = [("camera-frame-0", b"raw0", "small0")]
         processor._stream_fallback_index = 0
 

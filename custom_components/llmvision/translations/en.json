@@ -195,13 +195,15 @@
                             "default_model": "Default model",
                             "temperature": "Temperature",
                             "top_p": "Top P",
-                            "thinking_budget": "Thinking budget"
+                            "thinking_budget": "Thinking budget",
+                            "reasoning_effort": "Thinking effort (Gemini 3)"
                         },
                         "data_description": {
                             "default_model": "The default model to use when no other model is specified.",
                             "temperature": "Controls the randomness of the output. Lower values make the output more deterministic.",
                             "top_p": "Controls the diversity of the output. Lower values make the output more focused.",
-                            "thinking_budget": "Controls the thinking budget for models that support it. Higher values allow for more complex reasoning but may increase response time and cost."
+                            "thinking_budget": "Controls the thinking budget for models that support it. Higher values allow for more complex reasoning but may increase response time and cost.",
+                            "reasoning_effort": "Thinking level for Gemini 3 models. Provider default keeps existing behavior. An explicit level takes precedence over the thinking budget. For Gemini 2.5, use the thinking budget instead."
                         }
                     }
                 }
@@ -430,7 +432,7 @@
                         "data_description": {
                             "timeline_language": "Select the language used to generate icons from events.",
                             "retention_time": "Auto delete events after (days). Set to 0 to disable auto deletion.",
-                            "full_res_key_frame": "Also save the key frame at its captured resolution as \u201cname\u201d-full.jpg, alongside the resized copy. Roughly doubles snapshot storage.",
+                            "full_res_key_frame": "Also save the key frame at its captured resolution as “name”-full.jpg, alongside the resized copy. Roughly doubles snapshot storage.",
                             "timeline_today_summary": "Enable timeline summary to automatically generate a summary of today's events.",
                             "timeline_summary_prompt": "The instruction given to the model to generate a summary of today's events."
                         }

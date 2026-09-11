@@ -6,6 +6,7 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.core import HomeAssistant
 from functools import partial
 from typing import Any, cast
+from urllib.parse import urlparse
 import logging
 import inspect
 import re
@@ -59,6 +60,7 @@ from .const import (
     CONF_THINKING_BUDGET,
     CONF_THINK,
     CONF_REASONING_EFFORT,
+    REASONING_EFFORTS,
     CONF_REQUEST_TIMEOUT,
     CONF_SYSTEM_PROMPT,
     CONF_TITLE_PROMPT,
@@ -478,6 +480,9 @@ class Provider(ABC):
             "think": config.get(CONF_THINK, False),
             "reasoning_effort": config.get(CONF_REASONING_EFFORT, "none"),
         }
+        effort = vars(call).get(CONF_REASONING_EFFORT)
+        if effort is not None:
+            default_parameters[CONF_REASONING_EFFORT] = effort
         if call.model_is_glimpse():
             default_parameters["temperature"] = 0.2
             default_parameters["top_p"] = 0.95
@@ -608,8 +613,7 @@ class OpenAI(Provider):
     def _normalize_reasoning_effort(self, value: Any) -> str:
         """Normalize reasoning effort to a known value."""
         effort = str(value).strip().lower() if value is not None else "none"
-        allowed = {"none", "minimal", "low", "medium", "high", "xhigh"}
-        return effort if effort in allowed else "none"
+        return effort if effort in REASONING_EFFORTS else "none"
 
     def _model_supports_thinking(self, max_effort: str) -> str | bool:
         """Returns the highest supported reasoning effort for the model that is <= the reasoning effort from config"""
@@ -637,6 +641,13 @@ class OpenAI(Provider):
                         effort
                     ) <= effort_order.index(normalized_effort):
                         return effort
+        endpoint = (
+            self.endpoint.get("base_url", "")
+            if isinstance(self.endpoint, dict)
+            else self.endpoint
+        )
+        if urlparse(endpoint or "").hostname == "openrouter.ai":
+            return normalized_effort if normalized_effort != "none" else False
         return False
 
     def _generate_headers(self) -> dict:
@@ -663,12 +674,6 @@ class OpenAI(Provider):
     async def _make_request(self, data: dict) -> str:
         headers = self._generate_headers()
         url = self._get_request_url()
-
-        # Debug logging for OpenRouter
-        if "openrouter.ai" in url:
-            print(f"[OpenRouter DEBUG] URL: {url}")
-            print(f"[OpenRouter DEBUG] Headers: {headers}")
-            print(f"[OpenRouter DEBUG] Data: {Request.sanitize_data(data)}")
 
         response = await self._post(url=url, headers=headers, data=data)
         choices = response.get("choices") if isinstance(response, dict) else None
@@ -1310,11 +1315,41 @@ class Google(Provider):
                 raise ServiceValidationError(
                     "No content parts were returned from Google API"
                 )
-            response_text = content.get("parts")[0].get("text")
+            response_text = "".join(
+                part["text"]
+                for part in content["parts"]
+                if isinstance(part, dict)
+                and not part.get("thought")
+                and isinstance(part.get("text"), str)
+            )
+            if not response_text:
+                raise ServiceValidationError(
+                    "No text answer was returned from Google API"
+                )
         except Exception as e:
             _LOGGER.error(f"Error: {e}")
             raise e
         return response_text
+
+    def _apply_thinking(self, payload: dict, parameters: dict) -> None:
+        effort = parameters.get(CONF_REASONING_EFFORT, "none")
+        if effort not in (None, "none"):
+            if not self.model.startswith("gemini-3"):
+                raise ServiceValidationError(
+                    "reasoning_effort requires Gemini 3; use thinking_budget for Gemini 2.5"
+                )
+            if effort not in ("minimal", "low", "medium", "high"):
+                raise ServiceValidationError(
+                    "Google reasoning_effort must be minimal, low, medium, or high"
+                )
+            payload["generationConfig"]["thinkingConfig"] = {"thinkingLevel": effort}
+        elif (
+            self._model_supports_thinking()
+            and parameters.get(CONF_THINKING_BUDGET, 0) > 0
+        ):
+            payload["generationConfig"]["thinkingConfig"] = {
+                "thinkingBudget": parameters[CONF_THINKING_BUDGET]
+            }
 
     def _prepare_vision_data(self, call: Any) -> dict:
         default_parameters = self._get_default_parameters(call)
@@ -1327,14 +1362,7 @@ class Google(Provider):
             },
         }
 
-        # Add thinking budget based on current model and config
-        if (
-            self._model_supports_thinking()
-            and default_parameters.get("thinking_budget", 0) > 0
-        ):
-            payload["generationConfig"]["thinkingConfig"] = {
-                "thinkingBudget": default_parameters.get("thinking_budget", 0)
-            }
+        self._apply_thinking(payload, default_parameters)
 
         # Add structured output support
         if call.response_format == "json" and call.structure:
@@ -1393,14 +1421,7 @@ class Google(Provider):
             },
         }
 
-        # Add thinking budget based on current model and config
-        if (
-            self._model_supports_thinking()
-            and default_parameters.get("thinking_budget", 0) > 0
-        ):
-            payload["generationConfig"]["thinkingConfig"] = {
-                "thinkingBudget": default_parameters.get("thinking_budget", 0)
-            }
+        self._apply_thinking(payload, default_parameters)
 
         # Add structured output support
         if call.response_format == "json" and call.structure:

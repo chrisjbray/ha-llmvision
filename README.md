@@ -52,6 +52,57 @@ See the [website](https://llmvision.org) for the latest features and examples.
 
 <br>
 
+## Thinking controls in this fork
+
+The four analyzer services accept an optional `reasoning_effort` field:
+`image_analyzer`, `video_analyzer`, `stream_analyzer`, and `data_analyzer`.
+
+- An omitted field inherits the provider entry's setting. A per-call value does
+  not change that entry or other camera runs.
+- OpenRouter accepts `minimal`, `low`, `medium`, `high`, and `xhigh` without the
+  direct-OpenAI model allowlist dropping provider-prefixed model names. The
+  gateway/model determines which efforts it supports. Direct OpenAI retains
+  its existing model-specific handling.
+- Native Google Gemini 3 uses `thinkingLevel` (`minimal` through `high`). Its
+  provider form also has a thinking-effort setting. A selected level takes
+  precedence over the existing numeric budget. Gemini 2.5 retains the existing
+  budget setting; a Gemini 3 effort on an older model is rejected.
+- `none` omits the effort control. It does **not** guarantee thinking is off;
+  model defaults and existing budget settings still apply. Omitted fields and
+  old configurations retain their previous behavior, except that OpenRouter
+  now receives a configured non-default effort that was previously dropped.
+- `max_tokens` remains the provider's output allowance, not a precise thinking
+  budget. Higher effort may increase response time and cost. Google thought
+  parts are excluded from the returned answer; no raw reasoning is added to
+  service responses.
+
+Example using OpenRouter, after installing this fork:
+
+```yaml
+action: llmvision.image_analyzer
+data:
+  provider: YOUR_PROVIDER_ENTRY_ID
+  model: google/gemini-3.5-flash-lite
+  image_file: |-
+    /config/private/frame-0.jpg
+    /config/private/frame-1.jpg
+    /config/private/frame-2.jpg
+  message: Describe the vehicle's movement across these chronological images.
+  reasoning_effort: medium
+  max_tokens: 4096
+  store_in_timeline: false
+  expose_images: false
+response_variable: result
+```
+
+The example's token limit is explicit; the integration does not raise existing
+limits automatically. Existing camera blueprints inherit their provider's
+setting. This change does not alter capture duration, frame selection,
+concurrency, or notification rules.
+
+Provider references: [OpenRouter reasoning controls](https://openrouter.ai/docs/guides/best-practices/reasoning-tokens)
+and [Google thinking](https://ai.google.dev/gemini-api/docs/thinking).
+
 ## Quick Start Guide
 >[!TIP]
 >LLM Vision is available in the default HACS repository. You can install it directly through HACS or click the button below to open it there.

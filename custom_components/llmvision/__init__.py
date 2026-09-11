@@ -79,6 +79,7 @@ from .const import (
     CONF_THINKING_BUDGET,
     CONF_THINK,
     CONF_REASONING_EFFORT,
+    REASONING_EFFORTS,
 )
 
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
@@ -475,6 +476,14 @@ class ServiceCallData:
         self.target_width: int = data_call.data.get(TARGET_WIDTH, 3840)
         self.temperature: float = float()
         self.max_tokens: int = int(data_call.data.get(MAXTOKENS, 3000))
+        self.reasoning_effort = data_call.data.get(CONF_REASONING_EFFORT)
+        if (
+            self.reasoning_effort is not None
+            and self.reasoning_effort not in REASONING_EFFORTS
+        ):
+            raise ServiceValidationError(
+                f"reasoning_effort must be one of: {', '.join(REASONING_EFFORTS)}"
+            )
         self.include_filename: bool = data_call.data.get(INCLUDE_FILENAME, False)
         self.expose_images: bool = data_call.data.get(EXPOSE_IMAGES, False)
         self.generate_title: bool = data_call.data.get(GENERATE_TITLE, False)
@@ -938,7 +947,9 @@ def setup(hass, config):
             start=data_call.data.get("start"),
             end=data_call.data.get("end"),
             cameras=[camera.lower() for camera in data_call.data.get("cameras", [])],
-            categories=[category.lower() for category in data_call.data.get("categories", [])],
+            categories=[
+                category.lower() for category in data_call.data.get("categories", [])
+            ],
             labels=[label.lower() for label in data_call.data.get("labels", [])],
             limit=data_call.data.get("limit"),
             include_no_activity=data_call.data.get("include_no_activity", True),

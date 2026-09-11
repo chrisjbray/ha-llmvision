@@ -1579,7 +1579,10 @@ async def test_provider_coverage_misc_paths(monkeypatch, coverage_hass):
     coverage_hass.data[DOMAIN]["provider_openai"][CONF_THINKING_BUDGET] = 12
     g_payload = google._prepare_vision_data(
         make_coverage_call(
-            response_format="json", structure={"type": "object"}, use_memory=True
+            response_format="json",
+            structure={"type": "object"},
+            use_memory=True,
+            reasoning_effort="none",
         )
     )
     assert g_payload["generationConfig"]["thinkingConfig"]["thinkingBudget"] == 12

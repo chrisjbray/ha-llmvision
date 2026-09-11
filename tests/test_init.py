@@ -529,6 +529,7 @@ class TestSetupServices:
         processor.add_images = AsyncMock(return_value=request_obj)
         processor.add_videos = AsyncMock(return_value=request_obj)
         processor.add_streams = AsyncMock(return_value=request_obj)
+        processor.expose_stream_frame = AsyncMock()
 
         with (
             patch("custom_components.llmvision.ServiceCallData", return_value=call_obj),

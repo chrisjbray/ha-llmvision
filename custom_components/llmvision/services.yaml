@@ -76,6 +76,20 @@ image_analyzer:
         number:
           min: 512
           max: 1920
+    reasoning_effort:
+      name: Reasoning Effort
+      description: 'Override thinking effort for this call. Leave unchecked to inherit provider settings. None omits the effort setting; it does not guarantee that thinking is disabled. Native Gemini 3 supports minimal through high.'
+      required: false
+      example: medium
+      selector:
+        select:
+          options:
+            - "none"
+            - "minimal"
+            - "low"
+            - "medium"
+            - "high"
+            - "xhigh"
     max_tokens:
       name: Maximum Tokens
       description: 'Maximum number of tokens to generate'
@@ -223,6 +237,20 @@ video_analyzer:
         number:
           min: 512
           max: 1920
+    reasoning_effort:
+      name: Reasoning Effort
+      description: 'Override thinking effort for this call. Leave unchecked to inherit provider settings. None omits the effort setting; it does not guarantee that thinking is disabled. Native Gemini 3 supports minimal through high.'
+      required: false
+      example: medium
+      selector:
+        select:
+          options:
+            - "none"
+            - "minimal"
+            - "low"
+            - "medium"
+            - "high"
+            - "xhigh"
     max_tokens:
       name: Maximum Tokens
       description: 'Maximum number of tokens to generate'
@@ -373,6 +401,20 @@ stream_analyzer:
         number:
           min: 512
           max: 1920
+    reasoning_effort:
+      name: Reasoning Effort
+      description: 'Override thinking effort for this call. Leave unchecked to inherit provider settings. None omits the effort setting; it does not guarantee that thinking is disabled. Native Gemini 3 supports minimal through high.'
+      required: false
+      example: medium
+      selector:
+        select:
+          options:
+            - "none"
+            - "minimal"
+            - "low"
+            - "medium"
+            - "high"
+            - "xhigh"
     max_tokens:
       name: Maximum Tokens
       description: 'Maximum number of tokens to generate'
@@ -520,6 +562,20 @@ data_analyzer:
         number:
           min: 512
           max: 1920
+    reasoning_effort:
+      name: Reasoning Effort
+      description: 'Override thinking effort for this call. Leave unchecked to inherit provider settings. None omits the effort setting; it does not guarantee that thinking is disabled. Native Gemini 3 supports minimal through high.'
+      required: false
+      example: medium
+      selector:
+        select:
+          options:
+            - "none"
+            - "minimal"
+            - "low"
+            - "medium"
+            - "high"
+            - "xhigh"
     max_tokens:
       name: Maximum Tokens
       description: 'Maximum number of tokens to generate'

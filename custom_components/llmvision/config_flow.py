@@ -91,7 +91,7 @@ class llmvisionConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             "OpenWebUI": self.async_step_openwebui,
             "OpenRouter": self.async_step_openrouter,
             # TODO: Enable in next minor release (1.8.0).
-            # "Mistral": self.async_step_mistral,
+            # "Mistral": self.async_step_mistral,
         }
 
         step_method = provider_steps.get(provider)
@@ -131,7 +131,7 @@ class llmvisionConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                                 "OpenWebUI",
                                 "OpenRouter",
                                 # TODO: Enable in next minor release (1.8.0).
-                                # "Mistral",
+                                # "Mistral",
                                 "Custom OpenAI",
                             ],
                             "mode": "dropdown",
@@ -926,6 +926,24 @@ class llmvisionConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                                     }
                                 }
                             ),
+                            vol.Optional(
+                                CONF_REASONING_EFFORT, default="none"
+                            ): selector(
+                                {
+                                    "select": {
+                                        "options": [
+                                            {
+                                                "label": "Provider default",
+                                                "value": "none",
+                                            },
+                                            {"label": "Minimal", "value": "minimal"},
+                                            {"label": "Low", "value": "low"},
+                                            {"label": "Medium", "value": "medium"},
+                                            {"label": "High", "value": "high"},
+                                        ]
+                                    }
+                                }
+                            ),
                             vol.Optional(CONF_THINKING_BUDGET, default=0): selector(
                                 {
                                     "number": {
@@ -955,6 +973,9 @@ class llmvisionConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     ),
                     CONF_TEMPERATURE: self.init_info.get(CONF_TEMPERATURE, 0.5),
                     CONF_TOP_P: self.init_info.get(CONF_TOP_P, 0.9),
+                    CONF_REASONING_EFFORT: self.init_info.get(
+                        CONF_REASONING_EFFORT, "none"
+                    ),
                     CONF_THINKING_BUDGET: self.init_info.get(CONF_THINKING_BUDGET, 0),
                 },
             }

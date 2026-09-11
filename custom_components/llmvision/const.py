@@ -15,6 +15,7 @@ CONF_TOP_P = "top_p"
 CONF_THINKING_BUDGET = "thinking_budget"
 CONF_THINK = "think"
 CONF_REASONING_EFFORT = "reasoning_effort"
+REASONING_EFFORTS = ("none", "minimal", "low", "medium", "high", "xhigh")
 CONF_CONTEXT_WINDOW = "context_window"  # (ollama: num_ctx)
 CONF_KEEP_ALIVE = "keep_alive"
 CONF_REQUEST_TIMEOUT = "request_timeout"

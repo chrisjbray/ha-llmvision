@@ -8,6 +8,7 @@ This test module validates:
 5. Required API methods exist and are callable
 6. Real runtime execution behavior for async I/O and DB dependencies
 """
+
 import json
 from importlib import import_module
 from pathlib import Path
@@ -18,10 +19,7 @@ from packaging.version import InvalidVersion, Version
 
 # Module-level constant for manifest path
 MANIFEST_PATH = (
-    Path(__file__).parent.parent
-    / "custom_components"
-    / "llmvision"
-    / "manifest.json"
+    Path(__file__).parent.parent / "custom_components" / "llmvision" / "manifest.json"
 )
 
 # Dependencies with their critical API surface
@@ -115,9 +113,7 @@ class TestRequirementsFormat:
                 try:
                     Version(spec.version)
                 except InvalidVersion as e:
-                    pytest.fail(
-                        f"{pkg_name} has invalid version '{spec.version}': {e}"
-                    )
+                    pytest.fail(f"{pkg_name} has invalid version '{spec.version}': {e}")
 
     @pytest.mark.unit
     def test_no_strict_version_pinning(self, requirements_list):
@@ -154,9 +150,7 @@ class TestRequirementsFormat:
         Parameters:
             pkg_name: Package name to check (aiofile, aiosqlite, boto3)
         """
-        assert (
-            pkg_name in requirements_list
-        ), f"{pkg_name} not found in requirements"
+        assert pkg_name in requirements_list, f"{pkg_name} not found in requirements"
 
         req = requirements_list[pkg_name]
         has_flexible = any(spec.operator == ">=" for spec in req.specifier)
@@ -246,6 +240,9 @@ class TestDependencyRuntimeBehavior:
             cursor = await db.execute("SELECT 1 + 1")
             result = await cursor.fetchone()
             assert result == (2,)
+        # aiosqlite 0.21 queues worker shutdown; HA checks for leaked threads.
+        db.join(timeout=1)
+        assert not db.is_alive()
 
     @pytest.mark.unit
     def test_boto3_session_and_client_factory(self):
@@ -258,5 +255,7 @@ class TestDependencyRuntimeBehavior:
             aws_secret_access_key="test",
             region_name="us-east-1",
         )
-        client = session.client("bedrock-runtime", config=Config(signature_version="v4"))
+        client = session.client(
+            "bedrock-runtime", config=Config(signature_version="v4")
+        )
         assert hasattr(client, "invoke_model")
