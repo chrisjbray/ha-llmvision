@@ -78,7 +78,12 @@ def test_overrides_do_not_change_provider_or_other_calls(mock_hass, analysis_cal
 
 @pytest.mark.parametrize("builder", ["_prepare_vision_data", "_prepare_text_data"])
 @pytest.mark.parametrize(
-    "model", ["google/gemini-3.5-flash-lite", "openai/gpt-6-astra"]
+    "model",
+    [
+        "google/gemini-3.5-flash-lite",
+        "openai/gpt-6-astra",
+        "~anthropic/claude-sonnet-latest",
+    ],
 )
 @pytest.mark.parametrize("effort", REASONING_EFFORTS)
 def test_openrouter_sends_effort_for_non_allowlisted_models(
@@ -89,11 +94,21 @@ def test_openrouter_sends_effort_for_non_allowlisted_models(
         mock_hass, "fake-key", model, endpoint={"base_url": ENDPOINT_OPENROUTER}
     )
     payload = getattr(provider, builder)(analysis_call)
+    assert "reasoning_effort" not in payload
     if effort == "none":
-        assert "reasoning_effort" not in payload
+        assert "reasoning" not in payload
     else:
-        assert payload["reasoning_effort"] == effort
+        assert payload["reasoning"] == {"effort": effort}
     assert payload["max_completion_tokens"] == 4096
+
+
+@pytest.mark.parametrize("builder", ["_prepare_vision_data", "_prepare_text_data"])
+def test_direct_openai_keeps_its_native_effort_field(mock_hass, analysis_call, builder):
+    analysis_call.reasoning_effort = "high"
+    provider = OpenAI(mock_hass, "fake-key", "gpt-5.5")
+    payload = getattr(provider, builder)(analysis_call)
+    assert payload["reasoning_effort"] == "high"
+    assert "reasoning" not in payload
 
 
 @pytest.mark.parametrize(
@@ -234,7 +249,7 @@ def test_effort_preserves_structured_image_requests(
         assert payload["response_format"]["json_schema"]["schema"]["required"] == [
             "direction"
         ]
-        assert payload["reasoning_effort"] == "medium"
+        assert payload["reasoning"] == {"effort": "medium"}
         images = [
             part["image_url"]["url"]
             for part in payload["messages"][1]["content"]

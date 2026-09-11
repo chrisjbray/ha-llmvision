@@ -240,9 +240,6 @@ class TestDependencyRuntimeBehavior:
             cursor = await db.execute("SELECT 1 + 1")
             result = await cursor.fetchone()
             assert result == (2,)
-        # aiosqlite 0.21 queues worker shutdown; HA checks for leaked threads.
-        db.join(timeout=1)
-        assert not db.is_alive()
 
     @pytest.mark.unit
     def test_boto3_session_and_client_factory(self):

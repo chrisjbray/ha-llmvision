@@ -61,8 +61,9 @@ The four analyzer services accept an optional `reasoning_effort` field:
   not change that entry or other camera runs.
 - OpenRouter accepts `minimal`, `low`, `medium`, `high`, and `xhigh` without the
   direct-OpenAI model allowlist dropping provider-prefixed model names. The
-  gateway/model determines which efforts it supports. Direct OpenAI retains
-  its existing model-specific handling.
+  gateway/model determines which efforts it supports. Requests use OpenRouter's
+  canonical `reasoning: {effort: ...}` object, required for Anthropic reasoning.
+  Direct OpenAI retains its native field and existing model-specific handling.
 - Native Google Gemini 3 uses `thinkingLevel` (`minimal` through `high`). Its
   provider form also has a thinking-effort setting. A selected level takes
   precedence over the existing numeric budget. Gemini 2.5 retains the existing

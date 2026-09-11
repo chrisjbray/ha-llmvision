@@ -615,6 +615,25 @@ class OpenAI(Provider):
         effort = str(value).strip().lower() if value is not None else "none"
         return effort if effort in REASONING_EFFORTS else "none"
 
+    def _is_openrouter(self) -> bool:
+        endpoint = (
+            self.endpoint.get("base_url", "")
+            if isinstance(self.endpoint, dict)
+            else self.endpoint
+        )
+        return urlparse(endpoint or "").hostname == "openrouter.ai"
+
+    def _apply_reasoning_effort(self, payload: dict, parameters: dict) -> None:
+        max_effort = self._normalize_reasoning_effort(
+            parameters.get("reasoning_effort")
+        )
+        effort = self._model_supports_thinking(max_effort)
+        if max_effort != "none" and effort is not False:
+            if self._is_openrouter():
+                payload["reasoning"] = {"effort": effort}
+            else:
+                payload["reasoning_effort"] = effort
+
     def _model_supports_thinking(self, max_effort: str) -> str | bool:
         """Returns the highest supported reasoning effort for the model that is <= the reasoning effort from config"""
         models = {
@@ -641,12 +660,7 @@ class OpenAI(Provider):
                         effort
                     ) <= effort_order.index(normalized_effort):
                         return effort
-        endpoint = (
-            self.endpoint.get("base_url", "")
-            if isinstance(self.endpoint, dict)
-            else self.endpoint
-        )
-        if urlparse(endpoint or "").hostname == "openrouter.ai":
+        if self._is_openrouter():
             return normalized_effort if normalized_effort != "none" else False
         return False
 
@@ -700,13 +714,7 @@ class OpenAI(Provider):
             "top_p": default_parameters.get("top_p"),
         }
 
-        # Add reasoning effort if enabled and supported by model
-        max_effort = self._normalize_reasoning_effort(
-            default_parameters.get("reasoning_effort", "none")
-        )
-        supported_effort = self._model_supports_thinking(max_effort)
-        if max_effort != "none" and supported_effort != False:
-            payload["reasoning_effort"] = supported_effort
+        self._apply_reasoning_effort(payload, default_parameters)
 
         # Remove temperature and top_p if model is gpt-5
         if self.model in ["gpt-5", "gpt-5-mini", "gpt-5-nano"]:
@@ -785,13 +793,7 @@ class OpenAI(Provider):
             "top_p": default_parameters.get("top_p"),
         }
 
-        # Add reasoning effort if enabled and supported by model
-        max_effort = self._normalize_reasoning_effort(
-            default_parameters.get("reasoning_effort", "none")
-        )
-        supported_effort = self._model_supports_thinking(max_effort)
-        if max_effort != "none" and supported_effort != False:
-            payload["reasoning_effort"] = supported_effort
+        self._apply_reasoning_effort(payload, default_parameters)
 
         # Remove temperature and top_p if model is gpt-5
         if self.model in ["gpt-5", "gpt-5-mini", "gpt-5-nano"]:
